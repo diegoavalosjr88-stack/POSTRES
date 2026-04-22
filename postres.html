@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PostresKami - Sistema Profesional de Postres</title>
+    <style>
+        :root {
+            --rosa-claro: #ffe6f2;
+            --rosa-medio: #fff0f5;
+            --rosa-fuerte: #cc0066;
+            --rosa-boton: #ff99cc;
+        }
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: var(--rosa-claro);
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+        header {
+            background-color: var(--rosa-claro);
+            text-align: center;
+            padding: 20px;
+            border-bottom: 3px solid var(--rosa-fuerte);
+        }
+        h1 {
+            color: var(--rosa-fuerte);
+            margin: 0;
+            font-size: 28px;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr 300px;
+            gap: 15px;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 0 15px;
+        }
+        .card {
+            background-color: var(--rosa-medio);
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .section-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--rosa-fuerte);
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        button {
+            background-color: var(--rosa-boton);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            margin: 5px 0;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: bold;
+        }
+        button:hover {
+            opacity: 0.9;
+        }
+        .btn-success { background-color: #66cc99; }
+        .btn-danger { background-color: #ff9999; }
+        .btn-primary { background-color: #99ccff; }
+        .btn-info { background-color: #66ccff; }
+
+        .dessert-btn {
+            width: 100%;
+            margin: 6px 0;
+            padding: 12px;
+            background-color: #ff99cc;
+            border: none;
+            border-radius: 6px;
+            font-size: 15px;
+        }
+        .cart-item {
+            background: white;
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        .list {
+            max-height: 300px;
+            overflow-y: auto;
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .total {
+            font-size: 18px;
+            font-weight: bold;
+            text-align: center;
+            margin: 10px 0;
+            color: #006600;
+        }
+        .menu-bar {
+            background-color: #cc0066;
+            padding: 10px;
+            color: white;
+        }
+        .menu-bar a {
+            color: white;
+            margin: 0 15px;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        label {
+            display: block;
+            margin: 8px 0 4px;
+        }
+        input, select {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>🍰 POSTRESKAMI - SISTEMA PROFESIONAL DE POSTRES</h1>
+    </header>
+
+    <div class="menu-bar">
+        <a onclick="showSection('admin')">Administración</a>
+        <a onclick="showSupport()">Soporte</a>
+        <a onclick="showAbout()">Acerca de</a>
+    </div>
+
+    <div class="container">
+
+        <!-- Columna 1: Menú de Postres -->
+        <div class="card">
+            <div class="section-title">Menú de Postres</div>
+            <div id="desserts-list"></div>
+        </div>
+
+        <!-- Columna 2: Carrito -->
+        <div class="card">
+            <div class="section-title">Carrito de Compras</div>
+            <div id="cart-list" class="list"></div>
+            <div id="cart-total" class="total">Subtotal: $0.00</div>
+            
+            <button onclick="removeOneUnit()">Eliminar una unidad</button>
+            <button onclick="removeProduct()" class="btn-danger">Eliminar producto completo</button>
+            <button onclick="openCheckout()" class="btn-success">Pagar</button>
+            <button onclick="newSale()" class="btn-info">Nueva Venta</button>
+        </div>
+
+        <!-- Columna 3: Inventario y Clientes -->
+        <div>
+            <!-- Inventario -->
+            <div class="card">
+                <div class="section-title">Inventario Actual</div>
+                <div id="inventory-list" class="list"></div>
+                <button onclick="restockProduct()" class="btn-success">Reponer Stock</button>
+            </div>
+
+            <!-- Clientes -->
+            <div class="card">
+                <div class="section-title">Clientes</div>
+                <div id="customers-list" class="list"></div>
+                <button onclick="registerCustomer()" class="btn-primary">Registrar Cliente</button>
+            </div>
+
+            <div style="text-align:center; margin-top:15px;">
+                <strong id="total-revenue">Ingresos totales: $0.00</strong>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modales -->
+    <div id="modal" class="modal">
+        <div class="modal-content" id="modal-content">
+            <!-- El contenido se carga dinámicamente -->
+        </div>
+    </div>
+
+    <script>
+        // ==================== DATOS ====================
+        let desserts = [
+            { name: "Pastel de Chocolate", price: 4.50, cost: 2.00, stock: 10, description: "Esponjoso pastel con cobertura de chocolate belga." },
+            { name: "Cheesecake de Fresa", price: 5.00, cost: 2.20, stock: 10, description: "Suave cheesecake con fresas frescas y base crujiente." },
+            { name: "Cupcake Vainilla", price: 2.75, cost: 1.10, stock: 10, description: "Cupcake esponjoso con frosting de vainilla y chispas." },
+            { name: "Brownie con Nueces", price: 3.25, cost: 1.50, stock: 10, description: "Brownie húmedo con trozos de nuez y corazón de chocolate." },
+            { name: "Tiramisú", price: 6.00, cost: 2.50, stock: 10, description: "Clásico italiano con capas de crema y café." },
+            { name: "Galletas Decoradas", price: 2.50, cost: 0.90, stock: 10, description: "Galletas de mantequilla decoradas a mano." },
+            { name: "Pastel de Zanahoria", price: 5.50, cost: 2.30, stock: 10, description: "Húmedo pastel con trocitos de zanahoria." },
+            { name: "Macarons", price: 3.00, cost: 1.20, stock: 10, description: "Delicados macarons franceses." },
+            { name: "Flan Casero", price: 3.50, cost: 1.00, stock: 10, description: "Flan suave con caramelo líquido." },
+            { name: "Tarta de Manzana", price: 4.75, cost: 2.00, stock: 10, description: "Tarta de manzana con toque de canela." }
+        ];
+
+        let customers = [];
+        let sales_history = [];
+        let cart = {}; // {name: {dessert, quantity}}
+
+        const DELIVERY_COST = 2.50;
+
+        // ==================== FUNCIONES BÁSICAS ====================
+        function saveData() {
+            localStorage.setItem('postreskami_customers', JSON.stringify(customers));
+            localStorage.setItem('postreskami_sales', JSON.stringify(sales_history));
+            localStorage.setItem('postreskami_desserts', JSON.stringify(desserts));
+        }
+
+        function loadData() {
+            if (localStorage.getItem('postreskami_customers')) 
+                customers = JSON.parse(localStorage.getItem('postreskami_customers'));
+            if (localStorage.getItem('postreskami_sales')) 
+                sales_history = JSON.parse(localStorage.getItem('postreskami_sales'));
+            if (localStorage.getItem('postreskami_desserts')) 
+                desserts = JSON.parse(localStorage.getItem('postreskami_desserts'));
+        }
+
+        function getCartTotal() {
+            return Object.values(cart).reduce((sum, item) => 
+                sum + item.dessert.price * item.quantity, 0);
+        }
+
+        function updateAll() {
+            renderDesserts();
+            renderCart();
+            renderInventory();
+            renderCustomers();
+            updateRevenue();
+        }
+
+        // ==================== RENDERIZADO ====================
+        function renderDesserts() {
+            const container = document.getElementById('desserts-list');
+            container.innerHTML = '';
+            desserts.forEach(dessert => {
+                const btn = document.createElement('button');
+                btn.className = 'dessert-btn';
+                btn.textContent = `${dessert.name} - $${dessert.price.toFixed(2)}`;
+                btn.onclick = () => addToCartWithDetails(dessert);
+                container.appendChild(btn);
+            });
+        }
+
+        function renderCart() {
+            const container = document.getElementById('cart-list');
+            container.innerHTML = '';
+            Object.values(cart).forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'cart-item';
+                div.innerHTML = `
+                    ${item.dessert.name} ×${item.quantity} 
+                    <strong>$${(item.dessert.price * item.quantity).toFixed(2)}</strong>
+                `;
+                container.appendChild(div);
+            });
+            document.getElementById('cart-total').textContent = 
+                `Subtotal: $${getCartTotal().toFixed(2)}`;
+        }
+
+        function renderInventory() {
+            const container = document.getElementById('inventory-list');
+            container.innerHTML = '';
+            desserts.forEach(d => {
+                const div = document.createElement('div');
+                div.textContent = `${d.name} - Stock: ${d.stock}`;
+                container.appendChild(div);
+            });
+        }
+
+        function renderCustomers() {
+            const container = document.getElementById('customers-list');
+            container.innerHTML = '';
+            customers.forEach(c => {
+                const div = document.createElement('div');
+                div.textContent = `${c.name} (${c.phone || 'Sin teléfono'})`;
+                container.appendChild(div);
+            });
+        }
+
+        function updateRevenue() {
+            const total = sales_history.reduce((sum, sale) => sum + sale.total, 0);
+            document.getElementById('total-revenue').textContent = 
+                `Ingresos totales: $${total.toFixed(2)}`;
+        }
+
+        // ==================== CARRITO ====================
+        function addToCartWithDetails(dessert) {
+            const info = `Nombre: ${dessert.name}\nPrecio: $${dessert.price}\nDescripción: ${dessert.description}\nStock: ${dessert.stock}`;
+            alert(info);
+            
+            const qty = parseInt(prompt(`¿Cuántas unidades de ${dessert.name} deseas agregar?`, "1"));
+            if (!qty || qty <= 0) return;
+
+            if (dessert.stock < qty) {
+                alert("Stock insuficiente");
+                return;
+            }
+
+            if (cart[dessert.name]) {
+                if (cart[dessert.name].quantity + qty > dessert.stock) {
+                    alert("Stock insuficiente");
+                    return;
+                }
+                cart[dessert.name].quantity += qty;
+            } else {
+                cart[dessert.name] = { dessert: {...dessert}, quantity: qty };
+            }
+            renderCart();
+        }
+
+        function removeOneUnit() {
+            const items = Object.keys(cart);
+            if (items.length === 0) return;
+            const selected = prompt("Ingresa el nombre del producto a eliminar una unidad:\n" + items.join("\n"));
+            if (selected && cart[selected]) {
+                if (cart[selected].quantity > 1) {
+                    cart[selected].quantity--;
+                } else {
+                    delete cart[selected];
+                }
+                renderCart();
+            }
+        }
+
+        function removeProduct() {
+            const items = Object.keys(cart);
+            if (items.length === 0) return;
+            const selected = prompt("Ingresa el nombre del producto a eliminar completamente:\n" + items.join("\n"));
+            if (selected && cart[selected]) {
+                delete cart[selected];
+                renderCart();
+            }
+        }
+
+        function newSale() {
+            if (confirm("¿Vaciar el carrito?")) {
+                cart = {};
+                renderCart();
+            }
+        }
+
+        // ==================== CHECKOUT ====================
+        function openCheckout() {
+            if (Object.keys(cart).length === 0) {
+                alert("El carrito está vacío");
+                return;
+            }
+
+            let html = `
+                <h2>Finalizar Compra</h2>
+                <label>Tipo de Cliente:</label>
+                <select id="customer-type" onchange="toggleCustomerFields()">
+                    <option value="invitado">Invitado</option>
+                    <option value="existente">Cliente Existente</option>
+                    <option value="nuevo">Nuevo Cliente</option>
+                </select>
+
+                <div id="existente-fields" style="display:none">
+                    <label>Seleccionar Cliente:</label>
+                    <select id="customer-select"></select>
+                </div>
+
+                <div id="nuevo-fields" style="display:none">
+                    <label>Nombre completo:</label>
+                    <input type="text" id="new-name">
+                    <label>Teléfono:</label>
+                    <input type="text" id="new-phone">
+                    <label>Email:</label>
+                    <input type="text" id="new-email">
+                </div>
+
+                <label>Tipo de Entrega:</label>
+                <select id="delivery-type" onchange="toggleDelivery()">
+                    <option value="recoger">Recoger en negocio</option>
+                    <option value="domicilio">Servicio a domicilio (+$${DELIVERY_COST})</option>
+                </select>
+
+                <div id="address-field" style="display:none">
+                    <label>Dirección:</label>
+                    <input type="text" id="address">
+                </div>
+
+                <label>Método de Pago:</label>
+                <select id="payment-method">
+                    <option value="Transferencia">Transferencia</option>
+                    <option value="Efectivo">Efectivo</option>
+                </select>
+
+                <button onclick="confirmSale()" class="btn-success">Confirmar y Pagar</button>
+                <button onclick="closeModal()" class="btn-danger">Cancelar</button>
+            `;
+
+            document.getElementById('modal-content').innerHTML = html;
+            document.getElementById('modal').style.display = 'flex';
+
+            // Cargar clientes existentes
+            const select = document.getElementById('customer-select');
+            customers.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.id || c.name;
+                opt.textContent = `${c.name} (${c.phone || ''})`;
+                select.appendChild(opt);
+            });
+
+            toggleCustomerFields();
+        }
+
+        function toggleCustomerFields() {
+            const type = document.getElementById('customer-type').value;
+            document.getElementById('existente-fields').style.display = type === 'existente' ? 'block' : 'none';
+            document.getElementById('nuevo-fields').style.display = type === 'nuevo' ? 'block' : 'none';
+        }
+
+        function toggleDelivery() {
+            const isDelivery = document.getElementById('delivery-type').value === 'domicilio';
+            document.getElementById('address-field').style.display = isDelivery ? 'block' : 'none';
+        }
+
+        function confirmSale() {
+            const type = document.getElementById('customer-type').value;
+            let customerName = "Invitado";
+            let customerId = null;
+
+            if (type === "nuevo") {
+                customerName = document.getElementById('new-name').value || "Nuevo Cliente";
+                const newCustomer = {
+                    id: Date.now().toString(),
+                    name: customerName,
+                    phone: document.getElementById('new-phone').value,
+                    email: document.getElementById('new-email').value
+                };
+                customers.push(newCustomer);
+                customerId = newCustomer.id;
+            } else if (type === "existente") {
+                const selected = document.getElementById('customer-select').value;
+                const customer = customers.find(c => (c.id || c.name) === selected);
+                if (customer) {
+                    customerName = customer.name;
+                    customerId = customer.id;
+                }
+            }
+
+            const deliveryType = document.getElementById('delivery-type').value === 'domicilio' ? 
+                "Servicio a domicilio" : "Recoger en negocio";
+            const address = document.getElementById('address').value || "";
+
+            // Calcular total
+            const subtotal = getCartTotal();
+            const deliveryCost = deliveryType.includes("domicilio") ? DELIVERY_COST : 0;
+            const total = subtotal + deliveryCost;
+
+            // Registrar venta (simplificado)
+            const sale = {
+                date: new Date().toISOString(),
+                customer_name: customerName,
+                customer_id: customerId,
+                items: Object.values(cart),
+                subtotal: subtotal,
+                delivery_cost: deliveryCost,
+                total: total
+            };
+            sales_history.push(sale);
+
+            // Actualizar stock
+            Object.values(cart).forEach(item => {
+                const dessert = desserts.find(d => d.name === item.dessert.name);
+                if (dessert) dessert.stock -= item.quantity;
+            });
+
+            saveData();
+            alert(`¡Compra realizada por $${total.toFixed(2)}!\nGracias por comprar en PostresKami`);
+            
+            cart = {};
+            closeModal();
+            updateAll();
+        }
+
+        function closeModal() {
+            document.getElementById('modal').style.display = 'none';
+        }
+
+        // ==================== OTRAS FUNCIONES ====================
+        function registerCustomer() {
+            const name = prompt("Nombre completo del cliente:");
+            if (!name) return;
+            const phone = prompt("Teléfono (opcional):") || "";
+            customers.push({
+                id: Date.now().toString(),
+                name: name,
+                phone: phone
+            });
+            saveData();
+            renderCustomers();
+        }
+
+        function restockProduct() {
+            const names = desserts.map(d => d.name);
+            const productName = prompt("Producto a reponer:\n" + names.join("\n"));
+            if (!productName) return;
+            const qty = parseInt(prompt("Cantidad a agregar:"));
+            if (!qty || qty <= 0) return;
+
+            const dessert = desserts.find(d => d.name === productName);
+            if (dessert) {
+                dessert.stock += qty;
+                saveData();
+                renderInventory();
+                alert(`Se agregaron ${qty} unidades de ${productName}`);
+            }
+        }
+
+        function showSupport() {
+            alert("SOPORTE / AYUDA\n\n📞 Teléfono: +52 55 1234 5678\n📧 Email: soporte@postreskami.com\n💬 WhatsApp: +52 55 8765 4321");
+        }
+
+        function showAbout() {
+            alert("SOBRE NOSOTROS\n\nPostresKami - Endulzando tus momentos desde 2020\nElaboración artesanal con ingredientes frescos.");
+        }
+
+        function showSection(section) {
+            if (section === 'admin') {
+                alert("Panel de Administración\n\nUsa los botones de la interfaz para gestionar clientes, stock y finanzas.");
+            }
+        }
+
+        // ==================== INICIO ====================
+        window.onload = () => {
+            loadData();
+            updateAll();
+        };
+
+        // Guardar datos antes de cerrar
+        window.onbeforeunload = () => {
+            saveData();
+        };
+    </script>
+</body>
+</html>
